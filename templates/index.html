@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Learning Platform with Voice Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        let recognition;
+let wakeWord = "cat";
+
+function setupSpeechRecognition() {
+    console.log("Setting up speech recognition...");
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = true;
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    recognition.onresult = async (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+        console.log("Heard:", transcript);
+
+        if (transcript.includes(wakeWord)) {
+            console.log("Wake word detected.");
+            speakText("Yes, I'm listening");
+            recognition.stop();
+            await handleCommand();
+        }
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+    };
+
+    recognition.onend = () => {
+        console.log("Recognition ended, restarting...");
+        setupSpeechRecognition();
+        recognition.start();
+    };
+}
+
+async function handleCommand() {
+    console.log("Listening for command...");
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = async (event) => {
+        const command = event.results[0][0].transcript.trim().toLowerCase();
+        console.log("Command:", command);
+        const response = await fetchCommand(command);
+        speakText(response);
+        navigateToSection(command);
+        setupSpeechRecognition();
+        recognition.start();
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Command recognition error:", event.error);
+        setupSpeechRecognition();
+        recognition.start();
+    };
+
+    recognition.start();
+}
+
+async function fetchCommand(command) {
+    console.log("Fetching command:", command);
+    const response = await fetch('/process_command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command })
+    });
+    const result = await response.json();
+    console.log("Response received:", result.response);
+    return result.response;
+}
+
+function speakText(text) {
+    console.log("Speaking text:", text);
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+}
+
+function navigateToSection(command) {
+    console.log("Navigating to section:", command);
+    if (command.includes("module one")) {
+        document.getElementById("module1").scrollIntoView();
+    } else if (command.includes("module two")) {
+        document.getElementById("module2").scrollIntoView();
+    } else if (command.includes("quizzes")) {
+        document.getElementById("quizzes").scrollIntoView();
+    } else if (command.includes("start course")) {
+        document.getElementById("courseOverview").scrollIntoView();
+    }
+}
+
+// Start the assistant on page load
+window.onload = () => {
+    console.log("Starting recognition...");
+    setupSpeechRecognition();
+    recognition.start();
+};
+
+    </script>
+</head>
+<body>
+    <h1>Welcome to Your Learning Platform</h1>
+    <div id="courseOverview" class="section">
+        <h2>Course Overview</h2>
+        <p>This is an overview of your course content and structure.</p>
+    </div>
+    <div id="module1" class="section">
+        <h2>Module One</h2>
+        <p>Content for Module One. Here you will learn the basics.</p>
+    </div>
+    <div id="module2" class="section">
+        <h2>Module Two</h2>
+        <p>Content for Module Two. Building on what you've learned in Module One.</p>
+    </div>
+    <div id="quizzes" class="section">
+        <h2>Quizzes</h2>
+        <p>Test your knowledge with our quizzes.</p>
+    </div>
+</body>
+</html>
